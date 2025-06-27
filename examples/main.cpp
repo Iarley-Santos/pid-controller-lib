@@ -1,55 +1,67 @@
 #include "pid_controller.h"
+#include <Arduino.h>
 
-PidController pid(1.0f, 0.5f, 0.1f);
+// --- PID controller instance (Kp, Ki, Kd) ---
+pid_controller pid(1.0f, 0.5f, 0.1f);
 
-// Motores
-const int16_t min_speed = 0;
-const uint16_t max_speed = 255;
-const int16_t motor_bias = 100;
+// --- Motor parameters ---
+const int16_t  MIN_SPEED   = 0;
+const uint16_t MAX_SPEED   = 255;
+const int16_t  MOTOR_BIAS  = 100;   // Offset to compensate mechanical asymmetry
 
-// Setpoint desejado (ex: ângulo ou velocidade)
+// --- Desired set‑point (angle, speed, distance) ---
 float setpoint = 50.0f;
 
-// Simulador de sensor
+// --- Fake sensor variable (replace with real encoder/IMU reading) ---
 float feedback = 0.0f;
 
+// --- Timing helpers ---
 unsigned long last_time = 0;
 
 void setup()
 {
     Serial.begin(115200);
-    delay(1000);
-    Serial.println("PID Controller Teste Iniciado");
+    delay(500);
+    Serial.println("\n=== PID Controller Demo ===");
+
+    // Example of changing gains on the fly
+    pid.set_parameters(1.2f, 0.4f, 0.05f);
+    Serial.println("PID gains updated via setParameters().");
 }
 
-void loop() 
+void loop()
 {
     unsigned long current_time = millis();
-    float delta_time = (current_time - last_time) / 1000.0f;  // em segundos
+    float delta_time = (current_time - last_time) / 1000.0f;   // Convert to seconds
 
-    // Simula leitura de sensor (você trocaria aqui por encoder, imu, etc.)
-    feedback += random(-3, 4);  // valor aleatório para simular variação
+    /* ----------------------------------------------
+       Simulate a sensor reading.
+       Replace this block with your real sensor logic:
+       e.g., encoder counts, IMU yaw angle, etc.
+    ---------------------------------------------- */
+    feedback += random(-3, 4);   // Adds a small random variation
 
-    // Calcula sinal de controle
-    int u = pid.pid_calculation(setpoint, feedback, delta_time);
+    // --- Compute PID control signal ---
+    int control = pid.pid_calculation(setpoint, feedback, delta_time);
 
-    // Calcula velocidades dos motores
-    int16_t right_speed = pid.right_motor_speed(min_speed, max_speed, motor_bias, u);
-    int16_t left_speed  = pid.left_motor_speed(min_speed, max_speed, motor_bias, u);
+    // --- Translate control signal into motor speeds ---
+    int16_t right_speed = pid.right_motor_speed(MIN_SPEED, MAX_SPEED, MOTOR_BIAS, control);
+    int16_t left_speed  = pid.left_motor_speed (MIN_SPEED, MAX_SPEED, MOTOR_BIAS, control);
 
-    // Envia dados para o serial monitor
-    Serial.print("Setpoint: ");
-    Serial.print(setpoint);
-    Serial.print(" | Feedback: ");
-    Serial.print(feedback);
-    Serial.print(" | Erro: ");
-    Serial.print(setpoint - feedback);
-    Serial.print(" | Controle: ");
-    Serial.print(u);
-    Serial.print(" | R: ");
-    Serial.print(right_speed);
-    Serial.print(" | L: ");
-    Serial.println(left_speed);
+    /* ----------------------------------------------
+       Here you would actually drive your motors:
+       motorR.run(right_speed);
+       motorL.run(left_speed);
+    ---------------------------------------------- */
+
+    // --- Debug output over Serial ---
+    Serial.print("SP: ");  Serial.print(setpoint);
+    Serial.print(" | FB: "); Serial.print(feedback);
+    Serial.print(" | Error: "); Serial.print(setpoint - feedback);
+    Serial.print(" | Ctrl: ");  Serial.print(control);
+    Serial.print(" | R: ");     Serial.print(right_speed);
+    Serial.print(" | L: ");     Serial.println(left_speed);
 
     last_time = current_time;
+    delay(50);   // Small pacing delay (adjust as needed)
 }
