@@ -31,16 +31,6 @@ int pid_controller::pid_calculation(float setpoint, float feedback, float delta_
 {
     float error = setpoint - feedback;
 
-    if (error > 180)
-    {
-        error -= 360;
-    }
-    else if (error < -180)
-    {
-        error += 360;
-    }
-    
-
     _integral += error * delta_time;
     float derivative = (error - _previous_error) / delta_time;
     
